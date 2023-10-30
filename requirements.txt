@@ -1,2 +1,4 @@
 requests
 schedule
+virtualenv
+mysql-connector-python

@@ -5,8 +5,9 @@ import logging
 import time
 import os
 from datetime import datetime
+import sqlite3
 
-#Obter dados
+# Obter dados
 def get_swapi_data(category, page):
     base_url = f"https://swapi.dev/api/{category}/?page={page}"
     response = requests.get(base_url)
@@ -130,8 +131,65 @@ if not os.path.exists('data'):
 #Salvar log
 logging.basicConfig(filename='data_collection.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Funções para operações no banco de dados
+def create_tables():
+    conn = sqlite3.connect('swapi_data.db')
+    cursor = conn.cursor()
 
-if __name__ == '__main__':
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS people (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            height INTEGER,
+            mass INTEGER,
+            hair_color TEXT,
+            skin_color TEXT,
+            eye_color TEXT
+            -- Adicione outras colunas necessárias
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS planets (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            climate TEXT,
+            terrain TEXT
+            -- Adicione outras colunas necessárias
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+def insert_data_to_tables():
+    conn = sqlite3.connect('swapi_data.db')
+    cursor = conn.cursor()
+
+    with open('data/clean_people.csv', 'r') as file:
+        csv_reader = csv.DictReader(file)
+        rows = []
+        for row in csv_reader:
+            clean_row = {k: v for k, v in row.items() if v}  # Excluir colunas vazias
+            if all(clean_row.values()):  # Verificar se há valores nulos
+                rows.append(clean_row)
+
+        if rows:
+            cursor.executemany('''
+                INSERT INTO people (name, height, mass, hair_color, skin_color, eye_color)
+                VALUES (:name, :height, :mass, :hair_color, :skin_color, :eye_color)
+            ''', rows)
+        else:
+            logging.error("Nenhum dado válido para inserir na tabela people.")
+
+    # Repita o mesmo processo para a tabela "planets" com um arquivo diferente
+
+    conn.commit()
+    conn.close()
+
+
+
+if __name__ == '__main__':    
 #Executa uma vez para o agendamento
     update_data()
     agregacoesPeople()
